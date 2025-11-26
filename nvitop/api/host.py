@@ -351,18 +351,20 @@ class _CpuPowerSensor:
         if not base.is_dir():
             return []
 
-        domains: list[_RaplDomain] = []
+        package_domains: list[_RaplDomain] = []
+        psys_domains: list[_RaplDomain] = []
         for path in sorted(base.iterdir()):
             name = path.name
             if not name.startswith(('intel-rapl:', 'amd-rapl:')):
                 continue
             rapl_name = _safe_str(path / 'name')
             if rapl_name is not None and 'psys' in rapl_name.lower():
-                # System-level power; skip to focus on package domains.
-                continue
+                target = psys_domains
+            else:
+                target = package_domains
             if (path / 'energy_uj').is_file() or (path / 'power_uw').is_file():
-                domains.append(_RaplDomain(path))
-        return domains
+                target.append(_RaplDomain(path))
+        return package_domains or psys_domains
 
     def read(self) -> CpuPower | None:
         now = _time.monotonic()
