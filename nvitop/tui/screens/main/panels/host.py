@@ -371,6 +371,7 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                     temp_percent,
                     width_left - 4,
                     extra_text=f'  {temp_text}',
+                    swap_text=True,
                 ),
             )
             power_bar = '[ {} ]'.format(
@@ -379,6 +380,7 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                     power_percent,
                     width_right - 4,
                     extra_text=f'  {power_text}',
+                    swap_text=True,
                 ),
             )
             self.addstr(self.y, self.x, f'{cpu_bar}  ( {load_average} )')
@@ -476,8 +478,20 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         mini_total_width = min(host_inner_width, max(24, min(50, host_inner_width)))
         temp_width = mini_total_width // 2
         power_width = max(10, mini_total_width - temp_width - 2)
-        tmp_line = ' ' + make_bar_chart('TMP', temp_percent, temp_width, extra_text=temp_text)
-        pwr_line = ' ' + make_bar_chart('PWR', power_percent, power_width, extra_text=power_text)
+        tmp_line = ' ' + make_bar_chart(
+            'TMP',
+            temp_percent,
+            temp_width,
+            extra_text=temp_text,
+            swap_text=True,
+        )
+        pwr_line = ' ' + make_bar_chart(
+            'PWR',
+            power_percent,
+            power_width,
+            extra_text=power_text,
+            swap_text=True,
+        )
         if self.width >= 100:
             self.addstr(self.y + 2, self.x + 1, tmp_line.ljust(host_inner_width))
             self.addstr(self.y + 3, self.x + 1, pwr_line.ljust(host_inner_width))
@@ -570,6 +584,7 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                 temp_percent,
                 width_left - 4,
                 extra_text=f'  {temp_text}',
+                swap_text=True,
             ),
         )
         power_bar = '[ {} ]'.format(
@@ -578,6 +593,7 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                 power_percent,
                 width_right - 4,
                 extra_text=f'  {power_text}',
+                swap_text=True,
             ),
         )
 
