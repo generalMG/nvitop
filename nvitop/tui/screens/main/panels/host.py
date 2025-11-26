@@ -472,18 +472,31 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         self.addstr(self.y, self.x + 1, f' {load_average} ')
         self.addstr(self.y + 1, self.x + 1, f' {host.cpu_percent.history} ')
         inner_width = self.width - 2
-        cpu_width = getattr(host.cpu_percent.history, 'width', 60)
-        mini_total_width = min(inner_width, max(24, min(50, cpu_width)))
+        host_inner_width = getattr(host.cpu_percent.history, 'width', 77)
+        mini_total_width = min(host_inner_width, max(24, min(50, host_inner_width)))
         temp_width = mini_total_width // 2
         power_width = max(10, mini_total_width - temp_width - 2)
-        sensors_line = '{}  {}'.format(
-            make_bar_chart('TMP', temp_percent, temp_width, extra_text=temp_text),
-            make_bar_chart('PWR', power_percent, power_width, extra_text=power_text),
-        )
-        self.addstr(self.y + 2, self.x + 1, sensors_line.ljust(inner_width))
+        tmp_line = ' ' + make_bar_chart('TMP', temp_percent, temp_width, extra_text=temp_text)
+        pwr_line = ' ' + make_bar_chart('PWR', power_percent, power_width, extra_text=power_text)
+        if self.width >= 100:
+            self.addstr(self.y + 2, self.x + 1, tmp_line.ljust(host_inner_width))
+            self.addstr(self.y + 3, self.x + 1, pwr_line.ljust(host_inner_width))
+            self.addstr(self.y + 2, self.x + 78, '│')
+            self.addstr(self.y + 3, self.x + 78, '│')
+        else:
+            self.addstr(self.y + 2, self.x + 1, tmp_line.ljust(inner_width))
+            self.addstr(self.y + 3, self.x + 1, pwr_line.ljust(inner_width))
         self.color_at(self.y + 2, self.x + 1, width=temp_width, fg='yellow', attr='bold')
+        self.color_at(self.y + 3, self.x + 1, width=temp_width, fg='yellow', attr='bold')
         self.color_at(
             self.y + 2,
+            self.x + 1 + temp_width + 2,
+            width=power_width,
+            fg='red',
+            attr='bold',
+        )
+        self.color_at(
+            self.y + 3,
             self.x + 1 + temp_width + 2,
             width=power_width,
             fg='red',
