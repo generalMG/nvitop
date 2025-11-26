@@ -88,6 +88,7 @@ An interactive NVIDIA-GPU process viewer and beyond, the one-stop solution for G
   - environment variable screen
   - help screen
   - mouse support
+  - host CPU temperature and power mini-bars (when the OS exposes sensors/RAPL; not available in WSL2/limited VMs)
 - **Interactive**: responsive for user input (from keyboard and/or mouse) in monitor mode. (vs. [gpustat](https://github.com/wookayin/gpustat) & [py3nvml](https://github.com/fbcotter/py3nvml))
 - **Efficient**:
   - query device status using [*NVML Python bindings*](https://pypi.org/project/nvidia-ml-py) directly, instead of parsing the output of `nvidia-smi`. (vs. [nvidia-htop](https://github.com/peci1/nvidia-htop))
