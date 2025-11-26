@@ -15,7 +15,11 @@ from nvitop.api.host import AccessDenied, PsutilError
 __all__ = [
     'AccessDenied',
     'PsutilError',
+    'CpuPower',
+    'CpuTemperature',
     'cpu_percent',
+    'cpu_power_usage',
+    'cpu_temperature',
     'getuser',
     'hostname',
     'load_average',
@@ -24,6 +28,11 @@ __all__ = [
     'uptime',
     'virtual_memory',
 ]
+
+
+# Re-export CPU sensor dataclasses for convenient access in the TUI.
+CpuTemperature = host.CpuTemperature
+CpuPower = host.CpuPower
 
 
 if TYPE_CHECKING:
@@ -101,5 +110,9 @@ else:
     cpu_percent = ignore_error(fallback=NA)(host.cpu_percent)
     getuser = ignore_error(fallback=NA)(host.getuser)
     hostname = ignore_error(fallback=NA)(host.hostname)
+    cpu_temperature = ignore_error(fallback=host.CpuTemperature(NA, NA, NA, None, None))(  # type: ignore[arg-type]
+        host.cpu_temperature,
+    )
+    cpu_power_usage = ignore_error(fallback=host.CpuPower(NA, NA, None))(host.cpu_power_usage)  # type: ignore[arg-type]
     uptime = ignore_error(fallback=NA)(host.uptime)
     reverse_ppid_map = ignore_error(fallback=MappingProxyType({}))(host.reverse_ppid_map)

@@ -60,13 +60,21 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         self._compact: bool = compact
         self.width: int = max(79, root.width)
         self.full_height: int = 12
-        self.compact_height: int = 2
+        self.compact_height: int = 3
         self.height: int = self.compact_height if compact else self.full_height
 
         self.cpu_percent: float = NA  # type: ignore[assignment]
         self.load_average: tuple[float, float, float] = (NA, NA, NA)  # type: ignore[assignment]
         self.virtual_memory: host.VirtualMemory = host.VirtualMemory()
         self.swap_memory: host.SwapMemory = host.SwapMemory()
+        self.cpu_temperature: host.CpuTemperature = host.CpuTemperature(  # type: ignore[attr-defined]
+            NA,
+            NA,
+            NA,
+            None,
+            None,
+        )
+        self.cpu_power: host.CpuPower = host.CpuPower(NA, NA, None)  # type: ignore[attr-defined]
         self._snapshot_daemon = threading.Thread(
             name='host-snapshot-daemon',
             target=self._snapshot_target,
@@ -199,6 +207,8 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         host.virtual_memory()
         host.swap_memory()
         self.load_average = host.load_average()
+        self.cpu_temperature = host.cpu_temperature()  # type: ignore[attr-defined]
+        self.cpu_power = host.cpu_power_usage()  # type: ignore[attr-defined]
 
         self.cpu_percent = host.cpu_percent.history.last_value
         self.virtual_memory = host.virtual_memory.history.last_retval  # type: ignore[attr-defined]
@@ -222,6 +232,51 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         if len(gpu_utilizations) > 0:
             avg = sum(gpu_utilizations) / len(gpu_utilizations)
             self.average_gpu_utilization.add(avg)  # type: ignore[union-attr]
+
+    def _format_temperature_bar(self) -> tuple[float | NaType, str]:
+        """Return (percent, text) tuple for CPU temperature bar."""
+        temperature = self.cpu_temperature
+        percent: float | NaType = temperature.percent  # type: ignore[attr-defined]
+        if percent is NA and temperature.current not in (NA, None):
+            try:
+                percent = float(temperature.current)
+            except (TypeError, ValueError):
+                percent = NA
+
+        text = 'N/A'
+        if temperature.current not in (NA, None):
+            text = f'{float(temperature.current):.1f}C'
+            limit = getattr(temperature, 'limit', NA)
+            if limit not in (NA, None):
+                try:
+                    text += f'/{float(limit):.0f}C'
+                except (TypeError, ValueError):
+                    pass
+        return percent, text
+
+    def _format_power_bar(self) -> tuple[float | NaType, str]:
+        """Return (percent, text) tuple for CPU power bar."""
+        power = self.cpu_power
+        percent: float | NaType = power.percent  # type: ignore[attr-defined]
+        if percent is NA and power.watts not in (NA, None):
+            try:
+                percent = float(power.watts)
+            except (TypeError, ValueError):
+                percent = NA
+
+        text = 'N/A'
+        if power.watts not in (NA, None):
+            try:
+                text = f'{float(power.watts):.1f}W'
+            except (TypeError, ValueError):
+                text = 'N/A'
+            limit = getattr(power, 'limit', NA)
+            if limit not in (NA, None):
+                try:
+                    text += f'/{float(limit):.0f}W'
+                except (TypeError, ValueError):
+                    pass
+        return percent, text
 
     def _snapshot_target(self) -> None:
         self._daemon_running.wait()
@@ -281,6 +336,8 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         load_average = 'Load Average: {} {} {}'.format(
             *(f'{value:5.2f}'[:5] if value < 10000.0 else '9999+' for value in self.load_average),
         )
+        temp_percent, temp_text = self._format_temperature_bar()
+        power_percent, power_text = self._format_power_bar()
 
         if self.compact:
             width_right = len(load_average) + 4
@@ -308,8 +365,25 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                     width_right - 4,
                 ),
             )
+            temp_bar = '[ {} ]'.format(
+                make_bar_chart(
+                    'TMP',
+                    temp_percent,
+                    width_left - 4,
+                    extra_text=f'  {temp_text}',
+                ),
+            )
+            power_bar = '[ {} ]'.format(
+                make_bar_chart(
+                    'PWR',
+                    power_percent,
+                    width_right - 4,
+                    extra_text=f'  {power_text}',
+                ),
+            )
             self.addstr(self.y, self.x, f'{cpu_bar}  ( {load_average} )')
             self.addstr(self.y + 1, self.x, f'{memory_bar}  {swap_bar}')
+            self.addstr(self.y + 2, self.x, f'{temp_bar}  {power_bar}')
             self.color_at(self.y, self.x, width=len(cpu_bar), fg='cyan', attr='bold')
             self.color_at(self.y + 1, self.x, width=width_left, fg='magenta', attr='bold')
             self.color_at(self.y, self.x + width_left + 2, width=width_right, attr='bold')
@@ -318,6 +392,14 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                 self.x + width_left + 2,
                 width=width_right,
                 fg='blue',
+                attr='bold',
+            )
+            self.color_at(self.y + 2, self.x, width=width_left, fg='yellow', attr='bold')
+            self.color_at(
+                self.y + 2,
+                self.x + width_left + 2,
+                width=width_right,
+                fg='red',
                 attr='bold',
             )
             return
@@ -389,6 +471,24 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         self.color_reset()
         self.addstr(self.y, self.x + 1, f' {load_average} ')
         self.addstr(self.y + 1, self.x + 1, f' {host.cpu_percent.history} ')
+        inner_width = self.width - 2
+        cpu_width = getattr(host.cpu_percent.history, 'width', 60)
+        mini_total_width = min(inner_width, max(24, min(50, cpu_width)))
+        temp_width = mini_total_width // 2
+        power_width = max(10, mini_total_width - temp_width - 2)
+        sensors_line = '{}  {}'.format(
+            make_bar_chart('TMP', temp_percent, temp_width, extra_text=temp_text),
+            make_bar_chart('PWR', power_percent, power_width, extra_text=power_text),
+        )
+        self.addstr(self.y + 2, self.x + 1, sensors_line.ljust(inner_width))
+        self.color_at(self.y + 2, self.x + 1, width=temp_width, fg='yellow', attr='bold')
+        self.color_at(
+            self.y + 2,
+            self.x + 1 + temp_width + 2,
+            width=power_width,
+            fg='red',
+            attr='bold',
+        )
         self.addstr(
             self.y + 9,
             self.x + 1,
@@ -423,10 +523,14 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         self.virtual_memory = host.virtual_memory()
         self.swap_memory = host.swap_memory()
         self.load_average = host.load_average()
+        self.cpu_temperature = host.cpu_temperature()  # type: ignore[attr-defined]
+        self.cpu_power = host.cpu_power_usage()  # type: ignore[attr-defined]
 
         load_average = 'Load Average: {} {} {}'.format(
             *(f'{value:5.2f}'[:5] if value < 10000.0 else '9999+' for value in self.load_average),
         )
+        temp_percent, temp_text = self._format_temperature_bar()
+        power_percent, power_text = self._format_power_bar()
 
         width_right = len(load_average) + 4
         width_left = self.width - 2 - width_right
@@ -447,6 +551,22 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
             ),
         )
         swap_bar = '[ {} ]'.format(make_bar_chart('SWP', self.swap_memory.percent, width_right - 4))
+        temp_bar = '[ {} ]'.format(
+            make_bar_chart(
+                'TMP',
+                temp_percent,
+                width_left - 4,
+                extra_text=f'  {temp_text}',
+            ),
+        )
+        power_bar = '[ {} ]'.format(
+            make_bar_chart(
+                'PWR',
+                power_percent,
+                width_right - 4,
+                extra_text=f'  {power_text}',
+            ),
+        )
 
         lines = [
             '{}  {}'.format(
@@ -456,6 +576,10 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
             '{}  {}'.format(
                 colored(memory_bar, color='magenta', attrs=('bold',)),
                 colored(swap_bar, color='blue', attrs=('bold',)),
+            ),
+            '{}  {}'.format(
+                colored(temp_bar, color='yellow', attrs=('bold',)),
+                colored(power_bar, color='red', attrs=('bold',)),
             ),
         ]
 
