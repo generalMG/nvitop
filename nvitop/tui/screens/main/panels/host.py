@@ -338,6 +338,17 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         )
         temp_percent, temp_text = self._format_temperature_bar()
         power_percent, power_text = self._format_power_bar()
+        tmp_color = 'yellow'
+        try:
+            tmp_value = float(temp_percent)
+            if tmp_value >= 85.0:
+                tmp_color = 'red'
+            elif tmp_value >= 70.0:
+                tmp_color = 'yellow'
+            else:
+                tmp_color = 'green'
+        except Exception:  # noqa: BLE001
+            pass
 
         if self.compact:
             width_right = len(load_average) + 4
@@ -396,7 +407,7 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                 fg='blue',
                 attr='bold',
             )
-            self.color_at(self.y + 2, self.x, width=width_left, fg='yellow', attr='bold')
+            self.color_at(self.y + 2, self.x, width=width_left, fg=tmp_color, attr='bold')
             self.color_at(
                 self.y + 2,
                 self.x + width_left + 2,
@@ -478,6 +489,17 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         mini_total_width = min(host_inner_width, max(24, min(50, host_inner_width)))
         temp_width = mini_total_width // 2
         power_width = max(10, mini_total_width - temp_width - 2)
+        tmp_color = 'yellow'
+        try:
+            tmp_value = float(temp_percent)
+            if tmp_value >= 85.0:
+                tmp_color = 'red'
+            elif tmp_value >= 70.0:
+                tmp_color = 'yellow'
+            else:
+                tmp_color = 'green'
+        except Exception:  # noqa: BLE001
+            pass
         tmp_line = ' ' + make_bar_chart(
             'TMP',
             temp_percent,
@@ -500,8 +522,8 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         else:
             self.addstr(self.y + 2, self.x + 1, tmp_line.ljust(inner_width))
             self.addstr(self.y + 3, self.x + 1, pwr_line.ljust(inner_width))
-        self.color_at(self.y + 2, self.x + 1, width=temp_width, fg='yellow', attr='bold')
-        self.color_at(self.y + 3, self.x + 1, width=temp_width, fg='yellow', attr='bold')
+        self.color_at(self.y + 2, self.x + 1, width=temp_width, fg=tmp_color, attr='bold')
+        self.color_at(self.y + 3, self.x + 1, width=temp_width, fg=tmp_color, attr='bold')
         self.color_at(
             self.y + 2,
             self.x + 1 + temp_width + 2,
@@ -607,7 +629,7 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                 colored(swap_bar, color='blue', attrs=('bold',)),
             ),
             '{}  {}'.format(
-                colored(temp_bar, color='yellow', attrs=('bold',)),
+                colored(temp_bar, color=tmp_color, attrs=('bold',)),
                 colored(power_bar, color='red', attrs=('bold',)),
             ),
         ]
