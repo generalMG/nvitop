@@ -278,6 +278,17 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                     pass
         return percent, text
 
+    @staticmethod
+    def _attach_right_label(bar: str, value: str, width: int) -> str:
+        """Attach a right-aligned value to a bar, trimming if needed."""
+        value = value.strip()
+        if not value:
+            return bar
+        if len(value) >= width:
+            return value[:width].ljust(width)
+        head = bar[: max(0, width - len(value) - 1)]
+        return (head.rstrip() + ' ' + value).ljust(width)
+
     def _snapshot_target(self) -> None:
         self._daemon_running.wait()
         while self._daemon_running.is_set():
@@ -350,35 +361,6 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         except Exception:  # noqa: BLE001
             pass
 
-        def attach_right_label(bar: str, value: str, width: int) -> str:
-            value = value.strip()
-            if not value:
-                return bar
-            if len(value) >= width:
-                return value[:width].ljust(width)
-            head = bar[: max(0, width - len(value) - 1)]
-            return (head.rstrip() + ' ' + value).ljust(width)
-        tmp_color = 'yellow'
-        try:
-            tmp_value = float(temp_percent)
-            if tmp_value >= 85.0:
-                tmp_color = 'red'
-            elif tmp_value >= 70.0:
-                tmp_color = 'yellow'
-            else:
-                tmp_color = 'green'
-        except Exception:  # noqa: BLE001
-            pass
-
-        def attach_right_label(bar: str, value: str, width: int) -> str:
-            value = value.strip()
-            if not value:
-                return bar
-            if len(value) >= width:
-                return value[:width].ljust(width)
-            head = bar[: max(0, width - len(value) - 1)]
-            return (head.rstrip() + ' ' + value).ljust(width)
-
         if self.compact:
             width_right = len(load_average) + 4
             width_left = self.width - 2 - width_right
@@ -406,14 +388,14 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
                 ),
             )
             temp_bar = '[ {} ]'.format(
-                attach_right_label(
+                self._attach_right_label(
                     make_bar_chart('TMP', temp_percent, width_left - 4, extra_text=''),
                     temp_text,
                     width_left - 4,
                 ),
             )
             power_bar = '[ {} ]'.format(
-                attach_right_label(
+                self._attach_right_label(
                     make_bar_chart('PWR', power_percent, width_right - 4, extra_text=''),
                     power_text,
                     width_right - 4,
@@ -514,12 +496,12 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         mini_total_width = min(host_inner_width, max(24, min(50, host_inner_width)))
         temp_width = mini_total_width // 2
         power_width = max(10, mini_total_width - temp_width - 2)
-        tmp_line = ' ' + attach_right_label(
+        tmp_line = ' ' + self._attach_right_label(
             make_bar_chart('TMP', temp_percent, temp_width, extra_text=''),
             temp_text,
             temp_width,
         )
-        pwr_line = ' ' + attach_right_label(
+        pwr_line = ' ' + self._attach_right_label(
             make_bar_chart('PWR', power_percent, power_width, extra_text=''),
             power_text,
             power_width,
@@ -590,6 +572,17 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         )
         temp_percent, temp_text = self._format_temperature_bar()
         power_percent, power_text = self._format_power_bar()
+        tmp_color = 'yellow'
+        try:
+            tmp_value = float(temp_percent)
+            if tmp_value >= 85.0:
+                tmp_color = 'red'
+            elif tmp_value >= 70.0:
+                tmp_color = 'yellow'
+            else:
+                tmp_color = 'green'
+        except Exception:  # noqa: BLE001
+            pass
 
         width_right = len(load_average) + 4
         width_left = self.width - 2 - width_right
@@ -611,14 +604,14 @@ class HostPanel(BasePanel):  # pylint: disable=too-many-instance-attributes
         )
         swap_bar = '[ {} ]'.format(make_bar_chart('SWP', self.swap_memory.percent, width_right - 4))
         temp_bar = '[ {} ]'.format(
-            attach_right_label(
+            self._attach_right_label(
                 make_bar_chart('TMP', temp_percent, width_left - 4, extra_text=''),
                 temp_text,
                 width_left - 4,
             ),
         )
         power_bar = '[ {} ]'.format(
-            attach_right_label(
+            self._attach_right_label(
                 make_bar_chart('PWR', power_percent, width_right - 4, extra_text=''),
                 power_text,
                 width_right - 4,
